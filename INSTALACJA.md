@@ -134,7 +134,7 @@ define('SMTP_ENCRYPTION', 'tls');                // 'tls' lub 'ssl'
 define('SMTP_USER',       'twoj@gmail.com');     // login skrzynki
 define('SMTP_PASS',       'haslo_aplikacji');    // hasło skrzynki (Gmail: hasło do aplikacji)
 define('SMTP_FROM_NAME',  'System Zadań');
-define('REPORT_TO',       'odbiorca@example.com'); // adres docelowy raportu
+define('REPORT_TO',       'odbiorca@example.com'); // adres(y) docelowy raportu — wiele rozdziel przecinkami, np. 'a@x.pl, b@x.pl'
 ```
 
 > **Gmail:** włącz weryfikację dwuetapową, wygeneruj "Hasło do aplikacji" w ustawieniach

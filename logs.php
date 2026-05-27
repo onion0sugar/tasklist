@@ -16,10 +16,13 @@ $rows = $stmt->fetchAll();
 $dates = $db->query("SELECT DISTINCT date FROM logs ORDER BY date DESC LIMIT 90")->fetchAll(PDO::FETCH_COLUMN);
 
 $labels = [
-    'completed' => ['Wykonane',      '#0f5132', '#d1e7dd'],
-    'repeat'    => ['Ponowna próba', '#856404', '#fff3cd'],
-    'created'   => ['Utworzone',     '#084298', '#cfe2ff'],
-    'deleted'   => ['Usunięte',      '#842029', '#f8d7da'],
+    'completed'     => ['Wykonane',      '#0f5132', '#d1e7dd'],
+    'repeat'        => ['Ponowna próba', '#856404', '#fff3cd'],
+    'created'       => ['Utworzone',     '#084298', '#cfe2ff'],
+    'deleted'       => ['Usunięte',      '#842029', '#f8d7da'],
+    'reset'         => ['Reset',         '#383d41', '#e2e3e5'],
+    'report_sent'   => ['Raport wysłany','#0c5460', '#d1ecf1'],
+    'report_failed' => ['Raport – błąd', '#842029', '#f8d7da'],
 ];
 ?>
 <!DOCTYPE html>

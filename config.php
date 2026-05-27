@@ -15,7 +15,7 @@ define('SMTP_ENCRYPTION', 'tls');                // 'tls' lub 'ssl'
 define('SMTP_USER',       'raport@example.com'); // login do skrzynki
 define('SMTP_PASS',       'haslo_skrzynki');     // hasło do skrzynki
 define('SMTP_FROM_NAME',  'System Zadań');       // nazwa nadawcy
-define('REPORT_TO',       'odbiorca@example.com'); // adres docelowy raportu
+define('REPORT_TO',       'odbiorca@example.com'); // adres(y) docelowy raportu — wiele rozdziel przecinkami
 
 function requireLogin(): void {
     if (session_status() === PHP_SESSION_NONE) session_start();

@@ -126,7 +126,9 @@ try {
     $mail->CharSet    = 'UTF-8';
 
     $mail->setFrom(SMTP_USER, SMTP_FROM_NAME);
-    $mail->addAddress(REPORT_TO);
+    foreach (array_filter(array_map('trim', explode(',', REPORT_TO))) as $addr) {
+        $mail->addAddress($addr);
+    }
 
     $mail->isHTML(true);
     $mail->Subject = "Raport zadań – $dateFormatted ($totalDone/$totalAll wykonanych)";
@@ -134,7 +136,21 @@ try {
     $mail->AltBody = "Wykonane: $totalDone/$totalAll\nNiewykonane: $totalMissing";
 
     $mail->send();
+    $db->prepare("
+        INSERT INTO logs (task_id, task_name, action, date, logged_at)
+        VALUES (0, :name, 'report_sent', :date, NOW())
+    ")->execute([
+        ':name' => "Raport wysłany do " . REPORT_TO,
+        ':date' => $date,
+    ]);
     echo "[" . date('Y-m-d H:i:s') . "] Raport wysłany do " . REPORT_TO . "\n";
 } catch (Exception $e) {
+    $db->prepare("
+        INSERT INTO logs (task_id, task_name, action, date, logged_at)
+        VALUES (0, :name, 'report_failed', :date, NOW())
+    ")->execute([
+        ':name' => "Błąd wysyłki raportu: " . $mail->ErrorInfo,
+        ':date' => $date,
+    ]);
     echo "[" . date('Y-m-d H:i:s') . "] Błąd wysyłki: " . $mail->ErrorInfo . "\n";
 }
