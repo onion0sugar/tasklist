@@ -16,6 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['admin'] = true;
         header('Location: ' . APP_URL . '/index.php');
         exit;
+    } elseif ($user === MANAGER_USER && $pass === MANAGER_PASS) {
+        $_SESSION['manager'] = true;
+        header('Location: ' . APP_URL . '/manager.php');
+        exit;
     }
     $error = 'Nieprawidłowy login lub hasło.';
 }

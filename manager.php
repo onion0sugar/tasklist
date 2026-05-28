@@ -1,6 +1,6 @@
 <?php
 require 'config.php';
-requireLogin();
+requireManager();
 
 $db    = getDB();
 $today = date('Y-m-d');
@@ -50,20 +50,15 @@ $done  = array_sum(array_column($tasks, 'status'));
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lista Zadań (Admin) – <?= $today ?></title>
+<title>Panel Kierownika – Zadania</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 960px; margin: 0 auto; padding: 20px; background: #f8fafc; color: #1e293b; }
-  
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
   h1 { margin: 0; font-size: 1.8em; color: #0f172a; }
+  .logout { color: #64748b; text-decoration: none; font-size: 0.9em; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 6px; background: #fff; transition: all 0.2s; }
+  .logout:hover { background: #f1f5f9; color: #0f172a; }
   
-  nav { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%; }
-  nav a { color: #475569; text-decoration: none; font-size: 0.9em; border: 1px solid #e2e8f0; padding: 8px 14px; border-radius: 8px; background: #fff; font-weight: 500; transition: all 0.2s; }
-  nav a:hover { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
-  nav a.logout { margin-left: auto; color: #94a3b8; }
-  nav a.logout:hover { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
-
   .stats-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
   .stats-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; }
   .progress { background: #e2e8f0; border-radius: 6px; height: 10px; overflow: hidden; }
@@ -82,7 +77,6 @@ $done  = array_sum(array_column($tasks, 'status'));
   
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
   .card h3 { margin: 0; font-size: 1.1em; font-weight: 600; color: #0f172a; line-height: 1.4; }
-  
   .loc-badge { font-size: 0.75em; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-weight: 500; display: inline-block; margin-top: 4px; }
   
   .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: .8em; font-weight: 600; }
@@ -91,52 +85,18 @@ $done  = array_sum(array_column($tasks, 'status'));
   
   .scan-info { font-size: 0.85em; color: #475569; margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; }
   .scan-info strong { color: #0f172a; }
-  
-  .card-actions { display: flex; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
-  .btn { flex: 1; padding: 8px; font-size: 0.8em; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; background: #fff; color: #475569; text-align: center; text-decoration: none; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
-  .btn:hover { background: #f1f5f9; color: #0f172a; }
-  
   .no-tasks { text-align: center; grid-column: 1 / -1; padding: 40px; color: #64748b; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
-
-  /* Stylizacja Modala */
-  .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
-  .modal.active { display: flex; }
-  .modal-content { background-color: #fff; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); position: relative; animation: modalSlide 0.3s ease; }
-  
-  @keyframes modalSlide {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  
-  .close-modal { position: absolute; top: 12px; right: 16px; font-size: 1.5em; font-weight: bold; color: #94a3b8; cursor: pointer; transition: color 0.2s; }
-  .close-modal:hover { color: #0f172a; }
-  .modal-qr-img { width: 200px; height: 200px; display: block; margin: 16px auto; border: 1px solid #f1f5f9; padding: 8px; border-radius: 8px; }
-  .modal-title { font-size: 1.15em; font-weight: 600; color: #0f172a; margin-top: 0; margin-bottom: 8px; padding-right: 20px; }
-  
-  .modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-  .modal-btn { width: 100%; padding: 10px; font-size: 0.9em; font-weight: 600; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; cursor: pointer; transition: all 0.2s; }
-  .modal-btn.copy { background: #0f172a; color: #fff; border: 1px solid #0f172a; }
-  .modal-btn.copy:hover { background: #1e293b; }
-  .modal-btn.copy.copied { background: #10b981; border-color: #10b981; }
-  .modal-btn.print { background: #fff; color: #475569; border: 1px solid #cbd5e1; }
-  .modal-btn.print:hover { background: #f1f5f9; color: #0f172a; }
 </style>
 </head>
 <body>
 
 <header>
   <div>
-    <h1>Panel Administratora</h1>
+    <h1>Panel Kierownika</h1>
     <div style="color: #64748b; font-size: 0.9em; margin-top: 4px;">Dziś jest: <strong><?= date('d.m.Y', strtotime($today)) ?></strong></div>
   </div>
+  <a href="logout.php" class="logout">Wyloguj się</a>
 </header>
-
-<nav>
-  <a href="admin.php">+ Zarządzaj systemem</a>
-  <a href="logs.php">Logi systemowe</a>
-  <a href="print.php" target="_blank">&#128438; Drukuj wszystkie PDF</a>
-  <a href="logout.php" class="logout">Wyloguj</a>
-</nav>
 
 <div class="stats-card">
   <div class="stats-info">
@@ -165,10 +125,7 @@ $done  = array_sum(array_column($tasks, 'status'));
   <?php if (empty($tasks)): ?>
     <div class="no-tasks">Brak zadań pasujących do wybranego filtru.</div>
   <?php else: ?>
-    <?php foreach ($tasks as $t):
-        $url = APP_URL . '/scan.php?task_id=' . $t['id'];
-        $qr  = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode($url);
-    ?>
+    <?php foreach ($tasks as $t): ?>
       <div class="card <?= $t['status'] ? 'done' : 'pending' ?>">
         <div>
           <div class="card-header">
@@ -188,86 +145,18 @@ $done  = array_sum(array_column($tasks, 'status'));
             <span>o godz. <strong><?= date('H:i', strtotime($t['scanned_at'])) ?></strong></span>
           </div>
         <?php endif; ?>
-
-        <div class="card-actions">
-          <button class="btn" onclick="openQRModal('<?= htmlspecialchars($t['name'], ENT_QUOTES) ?>', '<?= $qr ?>', '<?= htmlspecialchars($url, ENT_QUOTES) ?>', '<?= $t['id'] ?>')">
-            &#128269; Kod QR
-          </button>
-        </div>
       </div>
     <?php endforeach; ?>
   <?php endif; ?>
 </div>
 
-<!-- Główne Okno Modalne dla QR -->
-<div id="qrModal" class="modal">
-  <div class="modal-content">
-    <span class="close-modal" onclick="closeQRModal()">&times;</span>
-    <h3 class="modal-title" id="modalTaskName">Nazwa zadania</h3>
-    <img src="" id="modalQRImg" class="modal-qr-img" alt="Kod QR">
-    
-    <div class="modal-actions">
-      <button class="modal-btn copy" id="modalCopyBtn" onclick="copyModalLink()">&#128279; Kopiuj link</button>
-      <a href="" id="modalPrintBtn" target="_blank" class="modal-btn print">&#128438; Drukuj PDF</a>
-    </div>
-  </div>
-</div>
-
 <script>
-let currentURL = '';
-
 function filterLocation(val) {
   if (val === '') {
-    window.location.href = 'index.php';
+    window.location.href = 'manager.php';
   } else {
-    window.location.href = 'index.php?location_id=' + encodeURIComponent(val);
+    window.location.href = 'manager.php?location_id=' + encodeURIComponent(val);
   }
-}
-
-function openQRModal(name, qrUrl, scanUrl, taskId) {
-  document.getElementById('modalTaskName').textContent = name;
-  document.getElementById('modalQRImg').src = qrUrl;
-  document.getElementById('modalPrintBtn').href = 'print.php?task_id=' + taskId;
-  currentURL = scanUrl;
-  
-  // Zresetuj stan przycisku kopiowania
-  const copyBtn = document.getElementById('modalCopyBtn');
-  copyBtn.innerHTML = '&#128279; Kopiuj link';
-  copyBtn.classList.remove('copied');
-  
-  document.getElementById('qrModal').classList.add('active');
-}
-
-function closeQRModal() {
-  document.getElementById('qrModal').classList.remove('active');
-}
-
-// Zamknij modal po kliknięciu poza zawartością
-window.onclick = function(event) {
-  const modal = document.getElementById('qrModal');
-  if (event.target === modal) {
-    closeQRModal();
-  }
-}
-
-function copyModalLink() {
-  const btn = document.getElementById('modalCopyBtn');
-  const ta = document.createElement('textarea');
-  ta.value = currentURL;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
-  
-  btn.textContent = '✓ Skopiowano';
-  btn.classList.add('copied');
-  setTimeout(function() {
-    btn.innerHTML = '&#128279; Kopiuj link';
-    btn.classList.remove('copied');
-  }, 2000);
 }
 </script>
 </body>

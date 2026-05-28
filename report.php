@@ -12,48 +12,54 @@ use PHPMailer\PHPMailer\Exception;
 $db   = getDB();
 $date = date('Y-m-d'); // zmień na: date('Y-m-d', strtotime('yesterday')) jeśli cron o północy
 
-// Pobierz wszystkie aktywne zadania
-$tasks = $db->query("SELECT id, name FROM tasks WHERE active = 1 ORDER BY name")->fetchAll();
+// Pobierz wszystkie aktywne zadania wraz z nazwą lokalizacji
+$tasks = $db->query("
+    SELECT t.id, t.name, l.name AS location_name 
+    FROM tasks t 
+    LEFT JOIN locations l ON t.location_id = l.id 
+    WHERE t.active = 1 
+    ORDER BY l.name, t.name
+")->fetchAll();
 
-// Pobierz statusy za dany dzień
+// Pobierz statusy i dane wykonania za dany dzień
 $stmt = $db->prepare("
-    SELECT task_id, status FROM daily_tasks WHERE date = :date
+    SELECT task_id, status, scanned_by, scanned_at FROM daily_tasks WHERE date = :date
 ");
 $stmt->execute([':date' => $date]);
-$statuses = [];
+$daily = [];
 foreach ($stmt->fetchAll() as $row) {
-    $statuses[$row['task_id']] = $row['status'];
+    $daily[$row['task_id']] = $row;
 }
 
-// Pobierz godziny wykonania z logów (tylko 'completed')
-$stmt = $db->prepare("
-    SELECT task_id, MIN(logged_at) AS completed_at
-    FROM logs
-    WHERE date = :date AND action = 'completed'
-    GROUP BY task_id
-");
-$stmt->execute([':date' => $date]);
-$times = [];
-foreach ($stmt->fetchAll() as $row) {
-    $times[$row['task_id']] = $row['completed_at'];
-}
+// Podziel i pogrupuj zadania według lokalizacji
+$doneGrouped    = [];
+$missingGrouped = [];
+$totalDone      = 0;
+$totalMissing   = 0;
 
-// Podziel zadania na wykonane i niewykonane
-$done    = [];
-$missing = [];
 foreach ($tasks as $t) {
-    if (!empty($statuses[$t['id']]) && $statuses[$t['id']] == 1) {
-        $done[] = [
+    $locName = !empty($t['location_name']) ? $t['location_name'] : 'Brak przypisanej lokalizacji';
+    $dTask = isset($daily[$t['id']]) ? $daily[$t['id']] : null;
+    
+    if ($dTask && $dTask['status'] == 1) {
+        if (!isset($doneGrouped[$locName])) {
+            $doneGrouped[$locName] = [];
+        }
+        $doneGrouped[$locName][] = [
             'name' => $t['name'],
-            'time' => isset($times[$t['id']]) ? date('H:i', strtotime($times[$t['id']])) : '—',
+            'time' => !empty($dTask['scanned_at']) ? date('H:i', strtotime($dTask['scanned_at'])) : '—',
+            'by'   => !empty($dTask['scanned_by']) ? $dTask['scanned_by'] : '—'
         ];
+        $totalDone++;
     } else {
-        $missing[] = $t['name'];
+        if (!isset($missingGrouped[$locName])) {
+            $missingGrouped[$locName] = [];
+        }
+        $missingGrouped[$locName][] = $t['name'];
+        $totalMissing++;
     }
 }
 
-$totalDone    = count($done);
-$totalMissing = count($missing);
 $totalAll     = count($tasks);
 $dateFormatted = date('d.m.Y', strtotime($date));
 
@@ -81,27 +87,33 @@ ob_start();
     </tr>
   </table>
 
-  <?php if (!empty($done)): ?>
+  <?php if ($totalDone > 0): ?>
   <h3 style="color:#0f5132;border-bottom:1px solid #d1e7dd;padding-bottom:6px">✓ Wykonane (<?= $totalDone ?>)</h3>
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
-    <?php foreach ($done as $t): ?>
-    <tr>
-      <td style="padding:8px 0;border-bottom:1px solid #eee"><?= htmlspecialchars($t['name']) ?></td>
-      <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;color:#555;font-size:.9em"><?= $t['time'] ?></td>
-    </tr>
-    <?php endforeach; ?>
-  </table>
+  <?php foreach ($doneGrouped as $locName => $gTasks): ?>
+    <h4 style="margin: 14px 0 6px; color:#475569; font-size: 0.95em; border-left: 3px solid #10b981; padding-left: 8px;"><?= htmlspecialchars($locName) ?></h4>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
+      <?php foreach ($gTasks as $t): ?>
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:0.9em;padding-left:12px;"><?= htmlspecialchars($t['name']) ?></td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;color:#555;font-size:0.85em;padding-right:8px;"><?= htmlspecialchars($t['by']) ?> &bull; <?= htmlspecialchars($t['time']) ?></td>
+      </tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endforeach; ?>
   <?php endif; ?>
 
-  <?php if (!empty($missing)): ?>
+  <?php if ($totalMissing > 0): ?>
   <h3 style="color:#842029;border-bottom:1px solid #f8d7da;padding-bottom:6px">✗ Niewykonane (<?= $totalMissing ?>)</h3>
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
-    <?php foreach ($missing as $name): ?>
-    <tr>
-      <td style="padding:8px 0;border-bottom:1px solid #eee;color:#842029"><?= htmlspecialchars($name) ?></td>
-    </tr>
-    <?php endforeach; ?>
-  </table>
+  <?php foreach ($missingGrouped as $locName => $gTasks): ?>
+    <h4 style="margin: 14px 0 6px; color:#64748b; font-size: 0.95em; border-left: 3px solid #ef4444; padding-left: 8px;"><?= htmlspecialchars($locName) ?></h4>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
+      <?php foreach ($gTasks as $name): ?>
+      <tr>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;color:#842029;font-size:0.9em;padding-left:12px;"><?= htmlspecialchars($name) ?></td>
+      </tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endforeach; ?>
   <?php endif; ?>
 
   <p style="color:#aaa;font-size:.8em;margin-top:32px;border-top:1px solid #eee;padding-top:12px">

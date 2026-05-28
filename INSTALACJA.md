@@ -1,243 +1,154 @@
-# Instrukcja instalacji – System Zadań QR
+# Pełna Instrukcja Instalacji – System Zadań QR
 
-## Wymagania
-
-- Linux (Ubuntu 20.04 / 22.04 lub Debian 11/12)
-- Apache 2.4+
-- PHP 7.4+ z rozszerzeniami: `php-mysql`, `php-mbstring`
-- MariaDB 10.4+ lub MySQL 8.0+
-- Composer (do instalacji PHPMailer)
-- Dostęp SSH do serwera
+Ten przewodnik zawiera kompletny zestaw instrukcji niezbędnych do uruchomienia aplikacji od zera na czystym systemie operacyjnym Ubuntu (20.04 lub 22.04 LTS) lub Debian.
 
 ---
 
-## 1. Instalacja Apache, PHP, MariaDB
+## 1. Wymagania wstępne
+Przed rozpoczęciem upewnij się, że posiadasz:
+- Serwer VPS lub serwer dedykowany z zainstalowanym systemem Linux Ubuntu/Debian.
+- Dostęp administratora root (przez `sudo`).
+- Zarejestrowaną domenę lub stały adres IP serwera.
+
+---
+
+## 2. Instalacja środowiska (Apache, PHP, MySQL/MariaDB)
+
+Wykonaj poniższe polecenia w terminalu swojego serwera (SSH):
 
 ```bash
+# Aktualizacja systemu operacyjnego
 sudo apt update && sudo apt upgrade -y
 
-# Apache
+# Instalacja serwera WWW Apache
 sudo apt install apache2 -y
 
-# PHP + moduł Apache + rozszerzenia
-sudo apt install php libapache2-mod-php php-mysql php-mbstring -y
+# Włączenie modułu rewrite w Apache i restart usługi
+sudo a2enmod rewrite
+sudo systemctl restart apache2
 
-# MariaDB
+# Instalacja interpretera PHP z wymaganymi bibliotekami
+sudo apt install php libapache2-mod-php php-mysql php-mbstring php-curl php-gd -y
+
+# Instalacja silnika bazy danych MariaDB (zastępstwo dla MySQL)
 sudo apt install mariadb-server -y
 
-# Zabezpieczenie MariaDB (ustaw hasło root, usuń testowe dane)
+# Zabezpieczenie instalacji bazy danych
 sudo mysql_secure_installation
 ```
-
-Sprawdź czy wszystko działa:
-
-```bash
-sudo systemctl status apache2
-sudo systemctl status mariadb
-php -v
-```
+*Podczas uruchamiania `mysql_secure_installation` postępuj zgodnie ze wskazówkami: ustaw bezpieczne hasło roota, usuń anonimowych użytkowników, zablokuj zdalne logowanie roota oraz usuń testową bazę danych.*
 
 ---
 
-## 2. Instalacja Composer
+## 3. Instalacja menedżera Composer
+
+Composer służy do pobrania i instalacji biblioteki PHPMailer:
 
 ```bash
+# Pobranie instalatora i instalacja globalna
 curl -sS https://getcomposer.org/installer | php
 sudo mv composer.phar /usr/local/bin/composer
+sudo chmod +x /usr/local/bin/composer
+
+# Sprawdzenie wersji
 composer --version
 ```
 
 ---
 
-## 3. Tworzenie bazy danych MySQL
+## 4. Konfiguracja Bazy Danych w MySQL/MariaDB
 
-Zaloguj się do MariaDB jako root:
-
+Zaloguj się do bazy danych:
 ```bash
 sudo mysql -u root -p
 ```
 
-Wykonaj poniższe komendy:
-
+Wykonaj kolejno poniższe polecenia (zmień `SILNE_HASLO_BAZY` na własne bezpieczne hasło):
 ```sql
--- Utwórz bazę danych
 CREATE DATABASE tasklist CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- Utwórz użytkownika z dostępem lokalnym
-CREATE USER 'tasklist_user'@'localhost' IDENTIFIED BY 'TWOJE_HASLO_DB';
+CREATE USER 'tasklist_user'@'localhost' IDENTIFIED BY 'SILNE_HASLO_BAZY';
 
--- Nadaj uprawnienia
-GRANT ALL ON tasklist.* TO 'tasklist_user'@'localhost';
+GRANT ALL PRIVILEGES ON tasklist.* TO 'tasklist_user'@'localhost';
 
--- Przeładuj uprawnienia
 FLUSH PRIVILEGES;
-
--- Sprawdź
-SELECT user, host FROM mysql.user WHERE user = 'tasklist_user';
 
 EXIT;
 ```
 
-> Jeśli potrzebujesz dostępu zdalnego do bazy (np. z zewnętrznego narzędzia):
-> ```sql
-> CREATE USER 'tasklist_user'@'%' IDENTIFIED BY 'TWOJE_HASLO_DB';
-> GRANT ALL ON tasklist.* TO 'tasklist_user'@'%';
-> FLUSH PRIVILEGES;
-> ```
-> Dodatkowo odblokuj port w firewallu: `sudo ufw allow 3306/tcp`
-> Oraz zmień `bind-address = 0.0.0.0` w `/etc/mysql/mariadb.conf.d/50-server.cnf`
-
 ---
 
-## 4. Wgranie plików aplikacji
+## 5. Pobranie i wdrożenie plików aplikacji
 
 ```bash
-# Utwórz katalog aplikacji
-sudo mkdir /var/www/html/tasklist
+# Tworzenie katalogu aplikacji
+sudo mkdir -p /var/www/html/tasklist
 
-# Nadaj uprawnienia
+# Ustawienie uprawnień własnościowych dla Apache (www-data)
 sudo chown -R www-data:www-data /var/www/html/tasklist
 sudo chmod -R 755 /var/www/html/tasklist
 ```
 
-Wgraj wszystkie pliki projektu do `/var/www/html/tasklist/`.
-
-Następnie zainstaluj PHPMailer przez Composer:
+Umieść wszystkie pliki kodu źródłowego systemu w katalogu `/var/www/html/tasklist/`. Następnie zainstaluj bibliotekę PHPMailer z poziomu użytkownika serwera www:
 
 ```bash
 cd /var/www/html/tasklist
-sudo composer require phpmailer/phpmailer
-sudo chown -R www-data:www-data /var/www/html/tasklist/vendor
+sudo -u www-data composer require phpmailer/phpmailer
 ```
 
 ---
 
-## 5. Konfiguracja aplikacji
+## 6. Konfiguracja pliku `config.php`
 
-Edytuj plik `config.php`:
-
+Skopiuj przykładowy plik konfiguracyjny (jeśli istnieje) lub edytuj bezpośrednio:
 ```bash
 sudo nano /var/www/html/tasklist/config.php
 ```
 
-Uzupełnij:
-
-```php
-define('DB_PASS',   'TWOJE_HASLO_DB');          // hasło do bazy (z kroku 3)
-define('APP_URL',   'http://ADRES_IP/tasklist'); // adres serwera
-
-define('ADMIN_PASS', 'HASLO_PANELU');            // hasło do panelu admina
-
-define('SMTP_HOST',       'smtp.gmail.com');     // serwer SMTP
-define('SMTP_PORT',       587);                  // port: 587 (TLS) lub 465 (SSL)
-define('SMTP_ENCRYPTION', 'tls');                // 'tls' lub 'ssl'
-define('SMTP_USER',       'twoj@gmail.com');     // login skrzynki
-define('SMTP_PASS',       'haslo_aplikacji');    // hasło skrzynki (Gmail: hasło do aplikacji)
-define('SMTP_FROM_NAME',  'System Zadań');
-define('REPORT_TO',       'odbiorca@example.com'); // adres(y) docelowy raportu — wiele rozdziel przecinkami, np. 'a@x.pl, b@x.pl'
-```
-
-> **Gmail:** włącz weryfikację dwuetapową, wygeneruj "Hasło do aplikacji" w ustawieniach
-> konta Google. Użyj go jako `SMTP_PASS` — nie używaj hasła do konta Google.
+Wprowadź prawidłowe parametry:
+- `DB_PASS`: Hasło ustawione w Kroku 4.
+- `APP_URL`: Pełny adres URL do aplikacji bez ukośnika `/` na końcu (np. `http://192.168.1.100/tasklist` lub `https://twojadomena.pl/tasklist`).
+- `ADMIN_PASS` i `MANAGER_PASS`: Hasła dostępowe odpowiednio dla Admina i Kierownika.
+- Sekcja `SMTP`: Wprowadź adres serwera pocztowego, port, login i hasło nadawcy. Skonfiguruj też adres e-mail odbiorcy w stałej `REPORT_TO`.
 
 ---
 
-## 6. Tworzenie tabel w bazie
+## 7. Inicjalizacja bazy danych (tabele systemowe)
 
-Wejdź w przeglądarce na:
-
+Wejdź w przeglądarce pod adres:
 ```
-http://ADRES_IP/tasklist/setup.php
+http://TWOJ_ADRES_SERWERA/tasklist/setup.php
 ```
-
-Powinien pojawić się komunikat: **"Tabele utworzone."**
+Strona automatycznie wygeneruje tabele oraz połączy je odpowiednimi kluczami obcymi.
 
 ---
 
-## 7. Konfiguracja cron – reset zadań i raport e-mail
+## 8. Konfiguracja harmonogramu zadań (Cron)
+
+Edytuj zadania crontab dla użytkownika Apache, aby system resetował zadania w nocy i wysyłał raporty:
 
 ```bash
 sudo crontab -u www-data -e
 ```
 
-Dodaj linie:
-
-```
-# Reset zadań każdej nocy o 00:01
+Wklej na końcu poniższe wiersze:
+```cron
+# Reset statusów zadań na kolejny dzień o 00:01
 1 0 * * * php /var/www/html/tasklist/cron_reset.php >> /var/log/tasklist.log 2>&1
 
-# Raport e-mail codziennie o 23:00
+# Wysyłanie dziennego raportu e-mail o 23:00
 0 23 * * * php /var/www/html/tasklist/report.php >> /var/log/tasklist_report.log 2>&1
 ```
 
-> Jeśli wolisz raport rano za poprzedni dzień, ustaw cron na `5 0 * * *`
-> i w pliku `report.php` zmień linię z datą na:
-> `$date = date('Y-m-d', strtotime('yesterday'));`
-
 ---
 
-## 8. Porządki po instalacji
+## 9. Usunięcie plików instalacyjnych (Bezpieczeństwo)
 
-Po zakończeniu konfiguracji usuń zbędne pliki:
+Usuń skrypty, które mogłyby posłużyć do ponownego zresetowania bazy danych przez osoby nieuprawnione:
 
 ```bash
 sudo rm /var/www/html/tasklist/setup.php
-sudo rm /var/www/html/tasklist/migrate.php   # tylko jeśli istnieje
+sudo rm -f /var/www/html/tasklist/migrate.php
 ```
 
----
-
-## 9. Weryfikacja
-
-| URL | Opis |
-|-----|------|
-| `http://ADRES_IP/tasklist/` | Panel admina (wymaga logowania) |
-| `http://ADRES_IP/tasklist/scan.php?task_id=1` | Przykładowy skan (publiczny) |
-
-Ręczny test wysyłki raportu:
-
-```bash
-php /var/www/html/tasklist/report.php
-```
-
-Ręczny reset zadań:
-
-```bash
-php /var/www/html/tasklist/cron_reset.php
-```
-
----
-
-## Struktura plików
-
-```
-tasklist/
-├── config.php          ← konfiguracja (DB, SMTP, hasła)
-├── login.php           ← logowanie admina
-├── logout.php          ← wylogowanie
-├── index.php           ← lista zadań z kodami QR
-├── admin.php           ← zarządzanie zadaniami
-├── scan.php            ← publiczny – obsługa skanowania QR
-├── logs.php            ← podgląd logów
-├── print.php           ← wydruk / zapis do PDF
-├── report.php          ← wysyłka raportu e-mail (cron)
-├── cron_reset.php      ← reset dzienny (cron)
-├── setup.php           ← tworzenie tabel (usuń po instalacji)
-├── .htaccess           ← zabezpieczenia Apache
-└── vendor/             ← PHPMailer (Composer)
-```
-
----
-
-## Reset do czystej instalacji (usunięcie danych)
-
-```sql
-sudo mysql -u root -p tasklist
-
-DROP TABLE IF EXISTS logs;
-DROP TABLE IF EXISTS daily_tasks;
-DROP TABLE IF EXISTS tasks;
-EXIT;
-```
-
-Następnie uruchom ponownie `setup.php`.
+System jest gotowy do użytku!

@@ -8,6 +8,9 @@ define('APP_URL', 'http://192.168.24.90/tasklist');
 define('ADMIN_USER', 'admin');
 define('ADMIN_PASS', 'zmien_haslo_admina');
 
+define('MANAGER_USER', 'kierownik');
+define('MANAGER_PASS', 'zmien_haslo_kierownika');
+
 // SMTP – konfiguracja własnej skrzynki
 define('SMTP_HOST',       'smtp.example.com');   // np. smtp.gmail.com / smtp.o2.pl
 define('SMTP_PORT',       587);                  // 587 (TLS) lub 465 (SSL)
@@ -20,6 +23,14 @@ define('REPORT_TO',       'odbiorca@example.com'); // adres(y) docelowy raportu 
 function requireLogin(): void {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (empty($_SESSION['admin'])) {
+        header('Location: ' . APP_URL . '/login.php');
+        exit;
+    }
+}
+
+function requireManager(): void {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (empty($_SESSION['admin']) && empty($_SESSION['manager'])) {
         header('Location: ' . APP_URL . '/login.php');
         exit;
     }
