@@ -23,8 +23,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'toggle') {
         $id = (int)($_POST['id'] ?? 0);
-        $db->prepare("UPDATE tasks SET active = 1 - active WHERE id = :id")->execute([':id' => $id]);
-        $msg = 'Status zadania został zmieniony.';
+        $stmt = $db->prepare("SELECT name, active FROM tasks WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $t = $stmt->fetch();
+        if ($t) {
+            $newActive = 1 - $t['active'];
+            $db->prepare("UPDATE tasks SET active = :active WHERE id = :id")->execute([':active' => $newActive, ':id' => $id]);
+            $actionName = $newActive ? 'activated' : 'deactivated';
+            $db->prepare("INSERT INTO logs (task_id, task_name, action, date, logged_at) VALUES (:tid, :name, :action, CURDATE(), NOW())")
+               ->execute([':tid' => $id, ':name' => $t['name'], ':action' => $actionName]);
+            $msg = 'Status zadania został zmieniony.';
+        }
     } elseif ($action === 'delete') {
         $id = (int)($_POST['id'] ?? 0);
         $stmt = $db->prepare("SELECT name FROM tasks WHERE id = :id");
@@ -42,24 +51,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name'] ?? '');
         if ($name !== '') {
             $db->prepare("INSERT INTO locations (name) VALUES (:name)")->execute([':name' => $name]);
+            $db->prepare("INSERT INTO logs (task_id, task_name, action, date, logged_at) VALUES (0, :name, 'loc_created', CURDATE(), NOW())")
+               ->execute([':name' => "Lokalizacja: " . $name]);
             $msg = 'Lokalizacja została dodana.';
         }
     } elseif ($action === 'delete_location') {
         $id = (int)($_POST['id'] ?? 0);
-        $db->prepare("DELETE FROM locations WHERE id = :id")->execute([':id' => $id]);
-        $msg = 'Lokalizacja została usunięta.';
+        $stmt = $db->prepare("SELECT name FROM locations WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $loc = $stmt->fetch();
+        if ($loc) {
+            $db->prepare("DELETE FROM locations WHERE id = :id")->execute([':id' => $id]);
+            $db->prepare("INSERT INTO logs (task_id, task_name, action, date, logged_at) VALUES (0, :name, 'loc_deleted', CURDATE(), NOW())")
+               ->execute([':name' => "Lokalizacja: " . $loc['name']]);
+            $msg = 'Lokalizacja została usunięta.';
+        }
     }
     // --- EMPLOYEE ACTIONS ---
     elseif ($action === 'add_employee') {
         $name = trim($_POST['name'] ?? '');
         if ($name !== '') {
             $db->prepare("INSERT INTO employees (name) VALUES (:name)")->execute([':name' => $name]);
+            $db->prepare("INSERT INTO logs (task_id, task_name, action, date, logged_at) VALUES (0, :name, 'emp_created', CURDATE(), NOW())")
+               ->execute([':name' => "Pracownik: " . $name]);
             $msg = 'Pracownik został dodany.';
         }
     } elseif ($action === 'delete_employee') {
         $id = (int)($_POST['id'] ?? 0);
-        $db->prepare("DELETE FROM employees WHERE id = :id")->execute([':id' => $id]);
-        $msg = 'Pracownik został usunięty.';
+        $stmt = $db->prepare("SELECT name FROM employees WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $emp = $stmt->fetch();
+        if ($emp) {
+            $db->prepare("DELETE FROM employees WHERE id = :id")->execute([':id' => $id]);
+            $db->prepare("INSERT INTO logs (task_id, task_name, action, date, logged_at) VALUES (0, :name, 'emp_deleted', CURDATE(), NOW())")
+               ->execute([':name' => "Pracownik: " . $emp['name']]);
+            $msg = 'Pracownik został usunięty.';
+        }
     }
 }
 
@@ -142,9 +169,9 @@ $employees = $db->query("SELECT * FROM employees ORDER BY name")->fetchAll();
 <?php if ($msg): ?><div class="msg"><?= htmlspecialchars($msg) ?></div><?php endif; ?>
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('tasks')">Zadania</button>
-  <button class="tab-btn" onclick="switchTab('locations')">Lokalizacje</button>
-  <button class="tab-btn" onclick="switchTab('employees')">Pracownicy</button>
+  <button id="btn-tasks" class="tab-btn active" onclick="switchTab('tasks')">Zadania</button>
+  <button id="btn-locations" class="tab-btn" onclick="switchTab('locations')">Lokalizacje</button>
+  <button id="btn-employees" class="tab-btn" onclick="switchTab('employees')">Pracownicy</button>
 </div>
 
 <!-- ================= ZADANIA ================= -->
@@ -310,9 +337,21 @@ function switchTab(tabId) {
   });
   
   // Pokaż wybraną zakładkę i aktywuj przycisk
-  document.getElementById(tabId + '-tab').classList.add('active');
-  event.currentTarget.classList.add('active');
+  const tabContent = document.getElementById(tabId + '-tab');
+  if (tabContent) tabContent.classList.add('active');
+  
+  const tabBtn = document.getElementById('btn-' + tabId);
+  if (tabBtn) tabBtn.classList.add('active');
+  
+  // Zapisz stan w localStorage
+  localStorage.setItem('admin_active_tab', tabId);
 }
+
+// Przywróć aktywną zakładkę po załadowaniu strony
+document.addEventListener("DOMContentLoaded", function() {
+  const savedTab = localStorage.getItem('admin_active_tab') || 'tasks';
+  switchTab(savedTab);
+});
 </script>
 </body>
 </html>

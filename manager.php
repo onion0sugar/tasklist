@@ -56,8 +56,12 @@ $done  = array_sum(array_column($tasks, 'status'));
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 960px; margin: 0 auto; padding: 20px; background: #f8fafc; color: #1e293b; }
   header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
   h1 { margin: 0; font-size: 1.8em; color: #0f172a; }
-  .logout { color: #64748b; text-decoration: none; font-size: 0.9em; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 6px; background: #fff; transition: all 0.2s; }
-  .logout:hover { background: #f1f5f9; color: #0f172a; }
+  
+  nav { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%; }
+  nav a { color: #475569; text-decoration: none; font-size: 0.9em; border: 1px solid #e2e8f0; padding: 8px 14px; border-radius: 8px; background: #fff; font-weight: 500; transition: all 0.2s; }
+  nav a:hover { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+  nav a.logout { margin-left: auto; color: #94a3b8; }
+  nav a.logout:hover { color: #ef4444; border-color: #fecaca; background: #fef2f2; }
   
   .stats-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
   .stats-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-weight: 600; }
@@ -95,8 +99,12 @@ $done  = array_sum(array_column($tasks, 'status'));
     <h1>Panel Kierownika</h1>
     <div style="color: #64748b; font-size: 0.9em; margin-top: 4px;">Dziś jest: <strong><?= date('d.m.Y', strtotime($today)) ?></strong></div>
   </div>
-  <a href="logout.php" class="logout">Wyloguj się</a>
 </header>
+
+<nav>
+  <a href="logs.php">Logi systemowe</a>
+  <a href="logout.php" class="logout">Wyloguj</a>
+</nav>
 
 <div class="stats-card">
   <div class="stats-info">
