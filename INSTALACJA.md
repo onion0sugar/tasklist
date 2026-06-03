@@ -125,19 +125,42 @@ Strona automatycznie wygeneruje tabele oraz połączy je odpowiednimi kluczami o
 
 ## 8. Konfiguracja harmonogramu zadań (Cron)
 
-Edytuj zadania crontab dla użytkownika Apache, aby system resetował zadania w nocy i wysyłał raporty:
+Edytuj zadania crontab dla użytkownika Apache (`www-data`), aby system automatycznie resetował statusy zadań w nocy i wysyłał dzienne raporty e-mail:
 
 ```bash
 sudo crontab -u www-data -e
 ```
 
-Wklej na końcu poniższe wiersze:
+Wybierz jedną z poniższych opcji logowania działania skryptów:
+
+### Opcja A: Zapisywanie logów do plików (zalecane do diagnostyki)
+Wklej na końcu pliku crontab poniższe wiersze:
 ```cron
 # Reset statusów zadań na kolejny dzień o 00:01
-1 0 * * * php /var/www/html/tasklist/cron_reset.php >> /var/log/tasklist.log 2>&1
+1 0 * * * php /var/www/html/tasklist/cron_reset.php >> /var/www/html/tasklist/cron_reset.log 2>&1
 
 # Wysyłanie dziennego raportu e-mail o 23:00
-0 23 * * * php /var/www/html/tasklist/report.php >> /var/log/tasklist_report.log 2>&1
+0 23 * * * php /var/www/html/tasklist/report.php >> /var/www/html/tasklist/cron_report.log 2>&1
+```
+
+**Ważne (Uprawnienia do plików logów):**
+Aby cron (działający jako użytkownik `www-data`) mógł automatycznie utworzyć pliki logów i w nich zapisywać, cały katalog projektu musi należeć do `www-data`. Nadaj odpowiednie uprawnienia poniższymi poleceniami:
+```bash
+sudo chown -R www-data:www-data /var/www/html/tasklist
+sudo chmod -R 775 /var/www/html/tasklist
+```
+
+
+---
+
+### Opcja B: Logowanie wyłącznie do bazy danych (bez tworzenia plików logów)
+Oba skrypty automatycznie zapisują najważniejsze statusy i logi w bazie danych (tabeli `logs`). Jeśli nie chcesz tworzyć dodatkowych plików tekstowych na serwerze i zarządzać ich uprawnieniami, wklej w crontabie:
+```cron
+# Reset statusów zadań na kolejny dzień o 00:01
+1 0 * * * php /var/www/html/tasklist/cron_reset.php > /dev/null 2>&1
+
+# Wysyłanie dziennego raportu e-mail o 23:00
+0 23 * * * php /var/www/html/tasklist/report.php > /dev/null 2>&1
 ```
 
 ---

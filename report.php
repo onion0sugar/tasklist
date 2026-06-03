@@ -3,8 +3,8 @@
 // Wysyła raport za bieżący dzień o godzinie 23:00.
 // Aby wysłać za poprzedni dzień, ustaw cron na 00:05 i zmień: date('Y-m-d', strtotime('yesterday'))
 
-require 'config.php';
-require 'vendor/autoload.php';
+require __DIR__ . '/config.php';
+require __DIR__ . '/vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
