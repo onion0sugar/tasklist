@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('Europe/Warsaw');
+
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'tasklist');
 define('DB_USER', 'tasklist_user');
@@ -44,6 +46,7 @@ function getDB(): PDO {
             DB_USER, DB_PASS,
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
         );
+        $pdo->exec("SET time_zone = '" . date('P') . "'");
     }
     return $pdo;
 }

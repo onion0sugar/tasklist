@@ -125,7 +125,7 @@ if (!empty($task['location_id'])) {
   h2         { margin: 0 0 8px; font-size: 1.2em; }
   p          { color: #555; margin: 0 0 6px; }
   .meta      { font-size: .85em; color: #888; margin-top: 10px; }
-  .card      { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 24px 20px; margin-top: 8px; }
+  .card      { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 24px 20px; margin-top: 8px; word-break: break-word; overflow-wrap: break-word; }
 
   /* Formularz wyboru */
   .form-group { text-align: left; margin-bottom: 16px; }

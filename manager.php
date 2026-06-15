@@ -80,7 +80,7 @@ $done  = array_sum(array_column($tasks, 'status'));
   .card.pending { border-left: 4px solid #f59e0b; }
   
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
-  .card h3 { margin: 0; font-size: 1.1em; font-weight: 600; color: #0f172a; line-height: 1.4; }
+  .card h3 { margin: 0; font-size: 1.1em; font-weight: 600; color: #0f172a; line-height: 1.4; word-break: break-word; overflow-wrap: break-word; }
   .loc-badge { font-size: 0.75em; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-weight: 500; display: inline-block; margin-top: 4px; }
   
   .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: .8em; font-weight: 600; }
