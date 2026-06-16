@@ -103,6 +103,7 @@ $done  = array_sum(array_column($tasks, 'status'));
 
 <nav>
   <a href="logs.php">Logi systemowe</a>
+  <a href="scan.php" target="_blank">&#128247; Skaner aparat/czytnik</a>
   <a href="logout.php" class="logout">Wyloguj</a>
 </nav>
 

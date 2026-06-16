@@ -134,6 +134,7 @@ $done  = array_sum(array_column($tasks, 'status'));
 <nav>
   <a href="admin.php">+ Zarządzaj systemem</a>
   <a href="logs.php">Logi systemowe</a>
+  <a href="scan.php" target="_blank">&#128247; Skaner aparat/czytnik</a>
   <a href="print.php" target="_blank">&#128438; Drukuj wszystkie PDF</a>
   <a href="logout.php" class="logout">Wyloguj</a>
 </nav>
