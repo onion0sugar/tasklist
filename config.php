@@ -22,8 +22,30 @@ define('SMTP_PASS',       'haslo_skrzynki');     // hasło do skrzynki
 define('SMTP_FROM_NAME',  'System Zadań');       // nazwa nadawcy
 define('REPORT_TO',       'odbiorca@example.com'); // adres(y) docelowy raportu — wiele rozdziel przecinkami
 
+function checkAutoLogin(): void {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (empty($_SESSION['admin']) && empty($_SESSION['manager']) && isset($_COOKIE['remember_auth'])) {
+        $parts = explode(':', $_COOKIE['remember_auth'], 2);
+        if (count($parts) === 2) {
+            [$role, $hash] = $parts;
+            if ($role === 'admin') {
+                $expected = hash('sha256', 'admin:' . ADMIN_USER . ':' . ADMIN_PASS);
+                if (hash_equals($expected, $hash)) {
+                    $_SESSION['admin'] = true;
+                }
+            } elseif ($role === 'manager') {
+                $expected = hash('sha256', 'manager:' . MANAGER_USER . ':' . MANAGER_PASS);
+                if (hash_equals($expected, $hash)) {
+                    $_SESSION['manager'] = true;
+                }
+            }
+        }
+    }
+}
+
 function requireLogin(): void {
     if (session_status() === PHP_SESSION_NONE) session_start();
+    checkAutoLogin();
     if (empty($_SESSION['admin'])) {
         header('Location: ' . APP_URL . '/login.php');
         exit;
@@ -32,6 +54,7 @@ function requireLogin(): void {
 
 function requireManager(): void {
     if (session_status() === PHP_SESSION_NONE) session_start();
+    checkAutoLogin();
     if (empty($_SESSION['admin']) && empty($_SESSION['manager'])) {
         header('Location: ' . APP_URL . '/login.php');
         exit;
