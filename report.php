@@ -63,6 +63,19 @@ foreach ($tasks as $t) {
 $totalAll     = count($tasks);
 $dateFormatted = date('d.m.Y', strtotime($date));
 
+// Jeśli wszystkie zadania zostały wykonane, nie wysyłaj raportu
+if ($totalMissing === 0) {
+    $db->prepare("
+        INSERT INTO logs (task_id, task_name, action, date, logged_at)
+        VALUES (0, :name, 'report_skipped', :date, NOW())
+    ")->execute([
+        ':name' => "Pominięto wysyłkę raportu – wszystkie zadania wykonane",
+        ':date' => $date,
+    ]);
+    echo "[" . date('Y-m-d H:i:s') . "] Wszystkie zadania zostały wykonane ($totalDone/$totalAll). Raport nie został wysłany.\n";
+    exit;
+}
+
 // Buduj HTML maila
 ob_start();
 ?>

@@ -29,6 +29,7 @@ $labels = [
     'reset'         => ['Reset statusów',    '#475569', '#f1f5f9'],
     'report_sent'   => ['Raport wysłany',    '#0891b2', '#ecfeff'],
     'report_failed' => ['Raport – błąd',     '#dc2626', '#fee2e2'],
+    'report_skipped'=> ['Raport pominięty',  '#475569', '#f1f5f9'],
 ];
 
 $backUrl = !empty($_SESSION['admin']) ? 'index.php' : 'manager.php';
