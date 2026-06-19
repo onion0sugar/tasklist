@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(255) NOT NULL,
     location_id INT DEFAULT NULL,
+    sort_order  INT NOT NULL DEFAULT 0,
     active      TINYINT DEFAULT 1,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL

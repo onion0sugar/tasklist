@@ -37,7 +37,7 @@ if ($selectedLocation !== '') {
     }
 }
 
-$sql .= " ORDER BY t.name";
+$sql .= " ORDER BY t.sort_order, t.name";
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $tasks = $stmt->fetchAll();

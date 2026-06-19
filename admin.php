@@ -7,7 +7,8 @@ $msg = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
+    // Akcja może być w POST (formularz) lub GET (AJAX z JSON body)
+    $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     // --- TASK ACTIONS ---
     if ($action === 'add') {
@@ -45,6 +46,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->prepare("DELETE FROM tasks WHERE id = :id")->execute([':id' => $id]);
             $msg = 'Zadanie zostało usunięte.';
         }
+    } elseif ($action === 'reorder') {
+        // Zapis kolejności przez AJAX (JSON body)
+        $raw   = file_get_contents('php://input');
+        $items = json_decode($raw, true);
+        if (is_array($items)) {
+            $stmt = $db->prepare("UPDATE tasks SET sort_order = :order WHERE id = :id");
+            foreach ($items as $item) {
+                if (isset($item['id'], $item['sort_order'])) {
+                    $stmt->execute([':order' => (int)$item['sort_order'], ':id' => (int)$item['id']]);
+                }
+            }
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => true]);
+        exit;
     }
     // --- LOCATION ACTIONS ---
     elseif ($action === 'add_location') {
@@ -95,7 +111,7 @@ $tasks = $db->query("
     SELECT t.*, l.name AS location_name 
     FROM tasks t 
     LEFT JOIN locations l ON t.location_id = l.id 
-    ORDER BY t.name
+    ORDER BY t.sort_order, t.name
 ")->fetchAll();
 
 $locations = $db->query("SELECT * FROM locations ORDER BY name")->fetchAll();
@@ -154,6 +170,24 @@ $employees = $db->query("SELECT * FROM employees ORDER BY name")->fetchAll();
   .badge.inactive { background: #f1f5f9; color: #475569; }
   
   .loc-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; background: #e2e8f0; color: #475569; font-weight: 500; }
+
+  /* ── Drag & Drop ── */
+  .drag-handle { cursor: grab; color: #cbd5e1; font-size: 1.1em; user-select: none; padding: 0 4px; transition: color 0.15s; }
+  .drag-handle:hover { color: #64748b; }
+  tr.dragging { opacity: 0.35; background: #f1f5f9; }
+  tr.drag-over { box-shadow: inset 0 2px 0 0 #3b82f6; }
+  .order-col { width: 42px; text-align: center; color: #94a3b8; font-size: 0.85em; }
+
+  /* Toast powiadomienie */
+  #orderToast { position: fixed; bottom: 24px; right: 24px; background: #10b981; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.9em; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transform: translateY(8px); transition: opacity 0.25s, transform 0.25s; pointer-events: none; z-index: 999; }
+  #orderToast.show { opacity: 1; transform: translateY(0); }
+
+  /* Przycisk zapisu kolejności */
+  #saveOrderBtn { display: none; padding: 8px 16px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-size: 0.88em; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  #saveOrderBtn:hover { background: #2563eb; }
+  #saveOrderBtn.visible { display: inline-flex; align-items: center; gap: 6px; }
+  .order-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .order-hint { font-size: 0.82em; color: #94a3b8; }
 </style>
 </head>
 <body>
@@ -191,21 +225,30 @@ $employees = $db->query("SELECT * FROM employees ORDER BY name")->fetchAll();
     </form>
   </div>
 
+
   <div class="card" style="padding: 0; overflow-x: auto;">
-    <table>
+    <div style="padding: 16px 20px 0;">
+      <div class="order-header-row">
+        <span class="order-hint">☰ Przeciągnij wiersz, aby zmienić kolejność zadań</span>
+        <button id="saveOrderBtn" onclick="saveOrder()">&#128190; Zapisz kolejność</button>
+      </div>
+    </div>
+    <table id="tasksTable">
       <thead>
         <tr>
-          <th>ID</th>
+          <th class="order-col" title="Kolejność">#</th>
+          <th></th>
           <th>Nazwa zadania</th>
           <th>Lokalizacja</th>
           <th>Status</th>
           <th style="text-align: right;">Akcje</th>
         </tr>
       </thead>
-      <tbody>
-        <?php foreach ($tasks as $t): ?>
-        <tr class="<?= $t['active'] ? '' : 'inactive' ?>">
-          <td><?= $t['id'] ?></td>
+      <tbody id="tasksTbody">
+        <?php foreach ($tasks as $i => $t): ?>
+        <tr class="<?= $t['active'] ? '' : 'inactive' ?>" data-id="<?= $t['id'] ?>" draggable="true">
+          <td class="order-col"><?= $i + 1 ?></td>
+          <td><span class="drag-handle" title="Przeciągnij, aby zmienić kolejność">⠿</span></td>
           <td style="font-weight: 500;"><?= htmlspecialchars($t['name']) ?></td>
           <td>
             <?php if (!empty($t['location_name'])): ?>
@@ -234,12 +277,14 @@ $employees = $db->query("SELECT * FROM employees ORDER BY name")->fetchAll();
         </tr>
         <?php endforeach; ?>
         <?php if (empty($tasks)): ?>
-        <tr><td colspan="5" style="color:#94a3b8; text-align:center; padding: 24px;">Brak zdefiniowanych zadań.</td></tr>
+        <tr><td colspan="6" style="color:#94a3b8; text-align:center; padding: 24px;">Brak zdefiniowanych zadań.</td></tr>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
 </div>
+
+
 
 <!-- ================= LOKALIZACJE ================= -->
 <div id="locations-tab" class="tab-content">
@@ -326,32 +371,131 @@ $employees = $db->query("SELECT * FROM employees ORDER BY name")->fetchAll();
 </div>
 
 <script>
+/* ── Przełączanie zakładek ── */
 function switchTab(tabId) {
-  // Ukryj wszystkie zakładki
-  document.querySelectorAll('.tab-content').forEach(function(el) {
-    el.classList.remove('active');
-  });
-  // Usuń klasę active ze wszystkich przycisków
-  document.querySelectorAll('.tab-btn').forEach(function(el) {
-    el.classList.remove('active');
-  });
-  
-  // Pokaż wybraną zakładkę i aktywuj przycisk
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   const tabContent = document.getElementById(tabId + '-tab');
   if (tabContent) tabContent.classList.add('active');
-  
   const tabBtn = document.getElementById('btn-' + tabId);
   if (tabBtn) tabBtn.classList.add('active');
-  
-  // Zapisz stan w localStorage
   localStorage.setItem('admin_active_tab', tabId);
 }
 
-// Przywróć aktywną zakładkę po załadowaniu strony
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener('DOMContentLoaded', function () {
   const savedTab = localStorage.getItem('admin_active_tab') || 'tasks';
   switchTab(savedTab);
+
+  /* ── Drag & Drop ── */
+  const tbody  = document.getElementById('tasksTbody');
+  if (!tbody) return;
+
+  let dragSrc = null;
+
+  function getRows() { return Array.from(tbody.querySelectorAll('tr[data-id]')); }
+
+  function renumberRows() {
+    getRows().forEach((row, i) => {
+      const cell = row.querySelector('.order-col');
+      if (cell) cell.textContent = i + 1;
+    });
+  }
+
+  function markDirty() {
+    const btn = document.getElementById('saveOrderBtn');
+    if (btn) btn.classList.add('visible');
+  }
+
+  tbody.addEventListener('dragstart', function (e) {
+    dragSrc = e.target.closest('tr[data-id]');
+    if (!dragSrc) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragSrc.dataset.id);
+    setTimeout(() => dragSrc.classList.add('dragging'), 0);
+  });
+
+  tbody.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const target = e.target.closest('tr[data-id]');
+    if (!target || target === dragSrc) return;
+    // Wyczyść inne podświetlenia
+    getRows().forEach(r => r.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+  });
+
+  tbody.addEventListener('dragleave', function (e) {
+    const target = e.target.closest('tr[data-id]');
+    if (target) target.classList.remove('drag-over');
+  });
+
+  tbody.addEventListener('drop', function (e) {
+    e.preventDefault();
+    const target = e.target.closest('tr[data-id]');
+    getRows().forEach(r => r.classList.remove('drag-over'));
+    if (!target || target === dragSrc) return;
+
+    // Wstaw dragSrc przed lub po target
+    const rows     = getRows();
+    const srcIdx   = rows.indexOf(dragSrc);
+    const tgtIdx   = rows.indexOf(target);
+    if (srcIdx < tgtIdx) {
+      tbody.insertBefore(dragSrc, target.nextSibling);
+    } else {
+      tbody.insertBefore(dragSrc, target);
+    }
+    renumberRows();
+    markDirty();
+  });
+
+  tbody.addEventListener('dragend', function () {
+    getRows().forEach(r => r.classList.remove('dragging', 'drag-over'));
+    dragSrc = null;
+  });
 });
+
+/* ── Zapis kolejności przez AJAX ── */
+function saveOrder() {
+  const tbody = document.getElementById('tasksTbody');
+  const rows  = Array.from(tbody.querySelectorAll('tr[data-id]'));
+  const items = rows.map((row, i) => ({ id: parseInt(row.dataset.id), sort_order: i + 1 }));
+
+  const btn = document.getElementById('saveOrderBtn');
+  btn.disabled = true;
+  btn.textContent = 'Zapisywanie…';
+
+  fetch('admin.php?action=reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(items),
+    credentials: 'same-origin'
+  })
+  .then(r => r.json())
+  .then(() => {
+    btn.disabled = false;
+    btn.innerHTML = '&#128190; Zapisz kolejność';
+    btn.classList.remove('visible');
+    showToast('Kolejność została zapisana ✓');
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.innerHTML = '&#128190; Zapisz kolejność';
+    btn.classList.add('visible');
+    alert('Błąd podczas zapisu kolejności.');
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('orderToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
 </script>
+
+<!-- Toast powiadomienie -->
+<div id="orderToast"></div>
+
 </body>
 </html>
+

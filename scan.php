@@ -109,7 +109,7 @@ if ($taskId > 0) {
               AND t.active = 1 
               AND t.id != :task_id 
               AND (dt.status IS NULL OR dt.status = 0)
-            ORDER BY t.name
+            ORDER BY t.sort_order, t.name
         ");
         $stmt->execute([
             ':date' => $today,

@@ -10,7 +10,7 @@ if ($taskId > 0) {
     $stmt->execute([':id' => $taskId]);
     $tasks = $stmt->fetchAll();
 } else {
-    $tasks = $db->query("SELECT id, name FROM tasks WHERE active = 1 ORDER BY name")->fetchAll();
+    $tasks = $db->query("SELECT id, name FROM tasks WHERE active = 1 ORDER BY sort_order, name")->fetchAll();
 }
 ?>
 <!DOCTYPE html>

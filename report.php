@@ -18,7 +18,7 @@ $tasks = $db->query("
     FROM tasks t 
     LEFT JOIN locations l ON t.location_id = l.id 
     WHERE t.active = 1 
-    ORDER BY l.name, t.name
+    ORDER BY l.name, t.sort_order, t.name
 ")->fetchAll();
 
 // Pobierz statusy i dane wykonania za dany dzień
