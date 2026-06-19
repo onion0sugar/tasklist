@@ -280,6 +280,18 @@ if ($taskId > 0) {
     <?php endif; ?>
   </div>
 
+
+  <!-- Przejście do kolejnego skanowania -->
+  <div class="card scanner-card">
+    <h3>Skanuj kolejny punkt</h3>
+    <form id="scanFormNext" onsubmit="event.preventDefault(); processScanInput();">
+      <input type="text" id="next_scan_input" placeholder="Zeskanuj kolejny kod QR..." autocomplete="off" autofocus>
+      <button type="button" class="btn-camera" onclick="openCamera()">
+        <span>&#128247;</span> Uruchom aparat w telefonie
+      </button>
+    </form>
+  </div>
+
   <?php if (!empty($remainingTasks)): ?>
   <div class="card" style="margin-top: 16px; text-align: left;">
     <h3 style="margin-top: 0; font-size: 0.9em; color: #475569; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; font-weight: 700;">
@@ -292,18 +304,8 @@ if ($taskId > 0) {
     </ul>
   </div>
   <?php endif; ?>
-
-  <!-- Przejście do kolejnego skanowania -->
-  <div class="card scanner-card">
-    <h3>Skanuj kolejny punkt</h3>
-    <form id="scanFormNext" onsubmit="event.preventDefault(); processScanInput();">
-      <input type="text" id="next_scan_input" placeholder="Zeskanuj kolejny kod QR..." autocomplete="off" autofocus>
-      <button type="button" class="btn-camera" onclick="openCamera()">
-        <span>&#128247;</span> Uruchom aparat w telefonie
-      </button>
-    </form>
-  </div>
   
+
 <?php else: ?>
   <!-- ── FORMULARZ POTWIERDZENIA ZADANIA ──────────────────────── -->
   <h2>Potwierdź wykonanie</h2>
