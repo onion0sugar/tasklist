@@ -54,6 +54,7 @@ $backUrl = !empty($_SESSION['admin']) ? 'index.php' : 'manager.php';
   .filters-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
   .filters-card label { font-weight: 600; font-size: 0.9em; color: #475569; }
   .filters-card select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95em; outline: none; background-color: #fff; min-width: 180px; }
+  .filters-card select[size] { height: auto; overflow-y: auto; }
   
   .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; }
   table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -80,7 +81,7 @@ $backUrl = !empty($_SESSION['admin']) ? 'index.php' : 'manager.php';
 <div class="filters-card">
   <form method="get" style="display: flex; align-items: center; gap: 8px; margin: 0;">
     <label for="date_select">Wybierz inny dzień:</label>
-    <select name="date" id="date_select" onchange="this.form.submit()">
+    <select name="date" id="date_select" size="7" onchange="this.form.submit()">
       <?php
       $allDates = in_array($date, $dates) ? $dates : array_merge([$date], $dates);
       foreach ($allDates as $d):
