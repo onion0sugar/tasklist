@@ -51,10 +51,23 @@ $backUrl = !empty($_SESSION['admin']) ? 'index.php' : 'manager.php';
   nav a { color: #475569; text-decoration: none; font-size: 0.9em; border: 1px solid #e2e8f0; padding: 8px 14px; border-radius: 8px; background: #fff; font-weight: 500; transition: all 0.2s; }
   nav a:hover { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
   
-  .filters-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  .filters-card label { font-weight: 600; font-size: 0.9em; color: #475569; }
-  .filters-card select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95em; outline: none; background-color: #fff; min-width: 180px; }
-  .filters-card select[size] { height: auto; overflow-y: auto; }
+  /* ── Scrollowana oś dat ── */
+  .date-bar { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .date-bar-label { font-weight: 600; font-size: 0.85em; color: #64748b; margin-bottom: 10px; }
+  .date-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .date-scroll::-webkit-scrollbar { height: 6px; }
+  .date-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+  .date-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  .date-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  .date-chip { flex: 0 0 auto; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; min-width: 64px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s; user-select: none; }
+  .date-chip:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .date-chip.active { background: #0f172a; border-color: #0f172a; }
+  .date-chip.active .chip-dow { color: #94a3b8; }
+  .date-chip.active .chip-day { color: #fff; }
+  .date-chip.active .chip-month { color: #64748b; }
+  .chip-dow { font-size: 0.7em; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1; }
+  .chip-day { font-size: 1.15em; font-weight: 700; color: #0f172a; line-height: 1.3; margin: 2px 0; }
+  .chip-month { font-size: 0.7em; font-weight: 500; color: #94a3b8; line-height: 1; }
   
   .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; }
   table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -78,18 +91,28 @@ $backUrl = !empty($_SESSION['admin']) ? 'index.php' : 'manager.php';
   <a href="<?= $backUrl ?>">&larr; Powrót do panelu</a>
 </nav>
 
-<div class="filters-card">
-  <form method="get" style="display: flex; align-items: center; gap: 8px; margin: 0;">
-    <label for="date_select">Wybierz inny dzień:</label>
-    <select name="date" id="date_select" size="7" onchange="this.form.submit()">
-      <?php
-      $allDates = in_array($date, $dates) ? $dates : array_merge([$date], $dates);
-      foreach ($allDates as $d):
-      ?>
-        <option value="<?= $d ?>" <?= $d === $date ? 'selected' : '' ?>><?= date('d.m.Y', strtotime($d)) ?></option>
-      <?php endforeach; ?>
-    </select>
-  </form>
+<div class="date-bar">
+  <div class="date-bar-label">&#128197; Wybierz dzień:</div>
+  <div class="date-scroll">
+    <?php
+    $dowPl = ['Niedz.','Pon.','Wt.','Śr.','Czw.','Pt.','Sob.'];
+    $monPl = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
+    $allDates = in_array($date, $dates) ? $dates : array_merge([$date], $dates);
+    foreach ($allDates as $d):
+      $ts      = strtotime($d);
+      $active  = $d === $date ? ' active' : '';
+      $dow     = $dowPl[(int)date('w', $ts)];
+      $day     = date('j', $ts);
+      $month   = $monPl[(int)date('n', $ts) - 1];
+      $url     = 'logs.php?date=' . $d;
+    ?>
+      <a href="<?= $url ?>" class="date-chip<?= $active ?>">
+        <span class="chip-dow"><?= $dow ?></span>
+        <span class="chip-day"><?= $day ?></span>
+        <span class="chip-month"><?= $month ?></span>
+      </a>
+    <?php endforeach; ?>
+  </div>
 </div>
 
 <div class="card">
