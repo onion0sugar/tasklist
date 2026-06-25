@@ -13,7 +13,7 @@ $stmt = $db->prepare("SELECT * FROM logs WHERE date = :date ORDER BY logged_at D
 $stmt->execute([':date' => $date]);
 $rows = $stmt->fetchAll();
 
-$dates = $db->query("SELECT DISTINCT date FROM logs ORDER BY date DESC LIMIT 90")->fetchAll(PDO::FETCH_COLUMN);
+$dates = $db->query("SELECT DISTINCT date FROM logs WHERE date >= DATE_SUB(CURDATE(), INTERVAL 13 DAY) ORDER BY date DESC LIMIT 14")->fetchAll(PDO::FETCH_COLUMN);
 
 $labels = [
     'completed'     => ['Wykonane',          '#059669', '#d1fae5'],
