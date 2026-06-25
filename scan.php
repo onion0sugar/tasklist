@@ -43,6 +43,37 @@ if ($taskId > 0) {
     // Zapamiętany pracownik z cookie
     $rememberedEmpId = isset($_COOKIE['remembered_employee']) ? (int)$_COOKIE['remembered_employee'] : 0;
 
+    // --- AUTO-POTWIERDZENIE: jeśli pracownik zapamiętany w cookie, zatwierdź od razu ---
+    if ($rememberedEmpId > 0 && !$alreadyDone && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $empName = '';
+        foreach ($employees as $e) {
+            if ((int)$e['id'] === $rememberedEmpId) {
+                $empName = $e['name'];
+                break;
+            }
+        }
+        if ($empName !== '') {
+            $now = date('Y-m-d H:i:s');
+            $db->prepare("
+                UPDATE daily_tasks
+                SET status = 1, scanned_by = :by, scanned_at = :at
+                WHERE task_id = :tid AND date = :date
+            ")->execute([':by' => $empName, ':at' => $now, ':tid' => $taskId, ':date' => $today]);
+
+            $db->prepare("
+                INSERT INTO logs (task_id, task_name, action, scanned_by, date, logged_at)
+                VALUES (:tid, :name, 'completed', :by, :date, NOW())
+            ")->execute([':tid' => $taskId, ':name' => $task['name'], ':by' => $empName, ':date' => $today]);
+
+            $alreadyDone = true;
+            $row = [
+                'status' => 1,
+                'scanned_by' => $empName,
+                'scanned_at' => $now
+            ];
+        }
+    }
+
     // --- Obsługa potwierdzenia ---
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$alreadyDone) {
         $empId    = (int)($_POST['employee_id'] ?? 0);
