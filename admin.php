@@ -103,6 +103,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                ->execute([':name' => "Pracownik: " . $emp['name']]);
             $msg = 'Pracownik został usunięty.';
         }
+    } elseif ($action === 'save_settings') {
+        for ($i = 1; $i <= 7; $i++) {
+            $val = $_POST["min_scan_hour_$i"] ?? '';
+            $val = trim($val);
+            if ($val === '') {
+                $val = null;
+            }
+            setSetting("min_scan_hour_$i", $val);
+        }
+        $msg = 'Ustawienia zostały zapisane.';
     }
 }
 
@@ -206,6 +216,7 @@ $employees = $db->query("SELECT * FROM employees ORDER BY name")->fetchAll();
   <button id="btn-tasks" class="tab-btn active" onclick="switchTab('tasks')">Zadania</button>
   <button id="btn-locations" class="tab-btn" onclick="switchTab('locations')">Lokalizacje</button>
   <button id="btn-employees" class="tab-btn" onclick="switchTab('employees')">Pracownicy</button>
+  <button id="btn-settings" class="tab-btn" onclick="switchTab('settings')">Ustawienia</button>
 </div>
 
 <!-- ================= ZADANIA ================= -->
@@ -367,6 +378,38 @@ $employees = $db->query("SELECT * FROM employees ORDER BY name")->fetchAll();
         <?php endif; ?>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- ================= USTAWIENIA ================= -->
+<div id="settings-tab" class="tab-content">
+  <div class="card">
+    <div class="card-title">Minimalna godzina skanowania (dni tygodnia)</div>
+    <p class="sub" style="margin-bottom: 16px;">Pracownicy nie będą mogli potwierdzić ani zeskanować zadania przed określoną godziną w danym dniu. Pozostaw puste pole, aby nie nakładać ograniczeń.</p>
+    <form method="post" action="admin.php">
+      <input type="hidden" name="action" value="save_settings">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
+        <?php 
+        $days = [
+            1 => 'Poniedziałek',
+            2 => 'Wtorek',
+            3 => 'Środa',
+            4 => 'Czwartek',
+            5 => 'Piątek',
+            6 => 'Sobota',
+            7 => 'Niedziela'
+        ];
+        foreach ($days as $num => $dayName):
+            $val = getSetting("min_scan_hour_$num", '');
+        ?>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="min_scan_hour_<?= $num ?>" style="font-weight: 600;"><?= $dayName ?></label>
+            <input type="time" id="min_scan_hour_<?= $num ?>" name="min_scan_hour_<?= $num ?>" value="<?= htmlspecialchars($val ?? '') ?>" style="padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95em; outline: none; background: #fff;">
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <button type="submit" class="primary">Zapisz ustawienia</button>
+    </form>
   </div>
 </div>
 

@@ -4,23 +4,23 @@ date_default_timezone_set('Europe/Warsaw');
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'tasklist');
 define('DB_USER', 'tasklist_user');
-define('DB_PASS', 'pass_db');
-define('APP_URL', 'http://192.168.1.1/tasklist');
+define('DB_PASS', 'zmien_haslo_db');
+define('APP_URL', 'http://192.168.24.90/tasklist');
 
 define('ADMIN_USER', 'admin');
-define('ADMIN_PASS', 'pass_admin');
+define('ADMIN_PASS', 'zmien_haslo_admina');
 
-define('MANAGER_USER', 'manager');
-define('MANAGER_PASS', 'pass_manager');
+define('MANAGER_USER', 'kierownik');
+define('MANAGER_PASS', 'zmien_haslo_kierownika');
 
 // SMTP – konfiguracja własnej skrzynki
-define('SMTP_HOST',       'smtp.example.com');   // smtp.gmail.com 
-define('SMTP_PORT',       587);                  // 587 (TLS) / 465 (SSL)
-define('SMTP_ENCRYPTION', 'tls');                // 'tls' / 'ssl'
+define('SMTP_HOST',       'smtp.example.com');   // np. smtp.gmail.com / smtp.o2.pl
+define('SMTP_PORT',       587);                  // 587 (TLS) lub 465 (SSL)
+define('SMTP_ENCRYPTION', 'tls');                // 'tls' lub 'ssl'
 define('SMTP_USER',       'raport@example.com'); // login do skrzynki
 define('SMTP_PASS',       'haslo_skrzynki');     // hasło do skrzynki
 define('SMTP_FROM_NAME',  'System Zadań');       // nazwa nadawcy
-define('REPORT_TO',       'odbiorca@example.com'); // adres(y) docelowy raportu — wiele rozdziel przecinkami 
+define('REPORT_TO',       'odbiorca@example.com'); // adres(y) docelowy raportu — wiele rozdziel przecinkami
 
 function checkAutoLogin(): void {
     if (session_status() === PHP_SESSION_NONE) session_start();
@@ -72,4 +72,22 @@ function getDB(): PDO {
         $pdo->exec("SET time_zone = '" . date('P') . "'");
     }
     return $pdo;
+}
+
+function getSetting(string $key, ?string $default = null): ?string {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = :key");
+        $stmt->execute([':key' => $key]);
+        $row = $stmt->fetch();
+        return $row ? $row['setting_value'] : $default;
+    } catch (PDOException $e) {
+        return $default;
+    }
+}
+
+function setSetting(string $key, ?string $value): void {
+    $db = getDB();
+    $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (:key, :value) ON DUPLICATE KEY UPDATE setting_value = :value");
+    $stmt->execute([':key' => $key, ':value' => $value]);
 }
