@@ -27,6 +27,29 @@ if ($taskId > 0) {
         die('Zadanie nie istnieje lub jest nieaktywne.');
     }
 
+    // --- Sprawdzenie limitu czasu (dzień tygodnia) ---
+    $dayOfWeek = date('N'); // 1 (pon) - 7 (nie)
+    $minHour = getSetting("min_scan_hour_$dayOfWeek");
+    $isTimeBlocked = false;
+    $errorTimeBlock = '';
+
+    if ($minHour) {
+        $currentTime = date('H:i');
+        if ($currentTime < $minHour) {
+            $isTimeBlocked = true;
+            $daysPol = [
+                1 => 'poniedziałek',
+                2 => 'wtorek',
+                3 => 'środę',
+                4 => 'czwartek',
+                5 => 'piątek',
+                6 => 'sobotę',
+                7 => 'niedzielę'
+            ];
+            $errorTimeBlock = "Skanowanie w " . $daysPol[$dayOfWeek] . " jest zablokowane do godziny " . $minHour . ". (Obecna godzina: " . $currentTime . ")";
+        }
+    }
+
     // Zapewnij wiersz w daily_tasks
     $db->prepare("INSERT IGNORE INTO daily_tasks (task_id, date, status) VALUES (:tid, :date, 0)")
        ->execute([':tid' => $taskId, ':date' => $today]);
@@ -43,8 +66,8 @@ if ($taskId > 0) {
     // Zapamiętany pracownik z cookie
     $rememberedEmpId = isset($_COOKIE['remembered_employee']) ? (int)$_COOKIE['remembered_employee'] : 0;
 
-    // --- AUTO-POTWIERDZENIE: jeśli pracownik zapamiętany w cookie, zatwierdź od razu ---
-    if ($rememberedEmpId > 0 && !$alreadyDone && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    // --- AUTO-POTWIERDZENIE: jeśli pracownik zapamiętany w cookie i brak blokady czasowej, zatwierdź od razu ---
+    if ($rememberedEmpId > 0 && !$alreadyDone && !$isTimeBlocked && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         $empName = '';
         foreach ($employees as $e) {
             if ((int)$e['id'] === $rememberedEmpId) {
@@ -75,7 +98,7 @@ if ($taskId > 0) {
     }
 
     // --- Obsługa potwierdzenia ---
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$alreadyDone) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$alreadyDone && !$isTimeBlocked) {
         $empId    = (int)($_POST['employee_id'] ?? 0);
         $remember = !empty($_POST['remember']);
 
@@ -297,6 +320,25 @@ if ($taskId > 0) {
     </form>
   </div>
   
+<?php elseif ($isTimeBlocked): ?>
+  <!-- ── BLOKADA CZASOWA ──────────────────────────────────────── -->
+  <div class="icon dup">&#128338;</div>
+  <h2>Skanowanie zablokowane</h2>
+  <div class="card">
+    <p style="font-weight: 600; font-size: 1.15em; color: #ef4444; margin-bottom: 12px; line-height: 1.4;">
+      <?= htmlspecialchars($errorTimeBlock) ?>
+    </p>
+    <p style="color: #64748b; font-size: 0.9em; margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0;">
+      Zadanie: <strong><?= htmlspecialchars($task['name']) ?></strong>
+    </p>
+  </div>
+  
+  <div style="margin-top: 24px;">
+    <a href="scan.php" class="btn-camera" style="text-decoration: none;">
+      <span>&larr;</span> Wróć do skanera ogólnego
+    </a>
+  </div>
+
 <?php elseif ($alreadyDone): ?>
   <!-- ── JUŻ WYKONANE / WŁAŚNIE POTWIERDZONE ───────────────────── -->
   <div class="icon ok">&#10003;</div>

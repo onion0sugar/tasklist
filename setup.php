@@ -63,4 +63,12 @@ CREATE TABLE IF NOT EXISTS logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ");
 
-echo "Tabele utworzone (locations, employees, tasks, daily_tasks, logs). Usuń plik setup.php z serwera.";
+// --- Ustawienia ---
+$db->exec("
+CREATE TABLE IF NOT EXISTS settings (
+    setting_key   VARCHAR(255) PRIMARY KEY,
+    setting_value TEXT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+");
+
+echo "Tabele utworzone (locations, employees, tasks, daily_tasks, logs, settings). Usuń plik setup.php z serwera.";
